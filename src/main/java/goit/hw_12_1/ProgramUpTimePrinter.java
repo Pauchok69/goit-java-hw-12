@@ -1,23 +1,20 @@
 package goit.hw_12_1;
 
 public class ProgramUpTimePrinter implements ProgramUpTimePrinterInterface {
+    Thread printUpSecThread;
+    Thread printEveryFiveSecThread;
     private int upTimeSeconds = 0;
-    private volatile boolean isFiveSeconds = false;
+
+
+    public ProgramUpTimePrinter() {
+        this.printEveryFiveSecThread = new Thread(this::printMessageEveryFiveSeconds);
+        this.printUpSecThread = new Thread(this::printUptimeSeconds);
+    }
 
     @Override
     public void exec() {
-        new Thread(this::printUptimeSeconds).start();
-        new Thread(this::printMessageEveryFiveSeconds).start();
-    }
-
-    private void printMessageEveryFiveSeconds() {
-        while (true) {
-            if (isFiveSeconds) {
-                System.out.println("Прошло 5 секунд");
-
-                isFiveSeconds = false;
-            }
-        }
+        printUpSecThread.start();
+        printEveryFiveSecThread.start();
     }
 
     private void printUptimeSeconds() {
@@ -32,8 +29,24 @@ public class ProgramUpTimePrinter implements ProgramUpTimePrinterInterface {
             System.out.println("От начала сессии прошло: " + upTimeSeconds + " сек");
 
             if (upTimeSeconds % 5 == 0) {
-                isFiveSeconds = true;
+                synchronized (printEveryFiveSecThread) {
+                    printEveryFiveSecThread.notify();
+                }
             }
+        }
+    }
+
+    private void printMessageEveryFiveSeconds() {
+        while (true) {
+            synchronized (Thread.currentThread()) {
+                try {
+                    Thread.currentThread().wait();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            System.out.println("Прошло 5 секунд");
         }
     }
 }
